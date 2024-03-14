@@ -363,6 +363,10 @@ static const struct stm32l4_rev stm32u59_u5axx_revs[] = {
 	{ 0x3001, "X" },
 };
 
+static const struct stm32l4_rev stm32u5f_u5gxx_revs[] = {
+	{ 0x1000, "A" }, { 0x1001, "Z" },
+};
+
 static const struct stm32l4_rev stm32wba5x_revs[] = {
 	{ 0x1000, "A" },
 };
@@ -605,6 +609,18 @@ static const struct stm32l4_part_info stm32l4_parts[] = {
 	  .revs                  = stm32u59_u5axx_revs,
 	  .num_revs              = ARRAY_SIZE(stm32u59_u5axx_revs),
 	  .device_str            = "STM32U59/U5Axx",
+	  .max_flash_size_kb     = 4096,
+	  .flags                 = F_HAS_DUAL_BANK | F_QUAD_WORD_PROG | F_HAS_TZ | F_HAS_L5_FLASH_REGS,
+	  .flash_regs_base       = 0x40022000,
+	  .fsize_addr            = 0x0BFA07A0,
+	  .otp_base              = 0x0BFA0000,
+	  .otp_size              = 512,
+	},
+	{
+	  .id                    = DEVID_STM32U5F_U5GXX,
+	  .revs                  = stm32u5f_u5gxx_revs,
+	  .num_revs              = ARRAY_SIZE(stm32u5f_u5gxx_revs),
+	  .device_str            = "STM32U5F/U5Gxx",
 	  .max_flash_size_kb     = 4096,
 	  .flags                 = F_HAS_DUAL_BANK | F_QUAD_WORD_PROG | F_HAS_TZ | F_HAS_L5_FLASH_REGS,
 	  .flash_regs_base       = 0x40022000,
@@ -2054,6 +2070,18 @@ static int stm32l4_probe(struct flash_bank *bank)
 		 * Note: flash banks are always contiguous
 		 */
 
+		page_size_kb = 8;
+		num_pages = flash_size_kb / page_size_kb;
+		stm32l4_info->bank1_sectors = num_pages;
+		if (is_max_flash_size || (stm32l4_info->optr & FLASH_U5_DUALBANK)) {
+			stm32l4_info->dual_bank_mode = true;
+			stm32l4_info->bank1_sectors = num_pages / 2;
+		}
+		break;
+	case DEVID_STM32U5F_U5GXX:
+		/* if flash size is max (2M) the device is always dual bank
+		 * otherwise check DUALBANK
+		 */
 		page_size_kb = 8;
 		num_pages = flash_size_kb / page_size_kb;
 		stm32l4_info->bank1_sectors = num_pages;
