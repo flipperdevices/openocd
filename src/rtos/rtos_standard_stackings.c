@@ -345,18 +345,18 @@ const struct rtos_register_stacking *
 
 		if (armv8m) {
 			if (fpuStacked) {
-				LOG_INFO("Stacking: v8m-fpu");
+				LOG_DEBUG("Stacking for %" PRIx32 ": v8m-fpu", stack_ptr);
 				return &rtos_standard_cortex_m33_fpu_stacking;
 			}
-			LOG_INFO("Stacking: v8m");
+			LOG_DEBUG("Stacking for %" PRIx32 ": v8m", stack_ptr);
 			return &rtos_standard_cortex_m33_stacking; 
 		}
 		else {
 			if (fpuStacked) {
-				LOG_INFO("Stacking: v7m-fpu");
+				LOG_DEBUG("Stacking for %" PRIx32 ": v7m-fpu", stack_ptr);
 				return &rtos_standard_cortex_m4f_fpu_stacking;	
 			}
-			LOG_INFO("Stacking: v7m");
+			LOG_DEBUG("Stacking for %" PRIx32 ": v7m", stack_ptr);
 			return &rtos_standard_cortex_m4f_stacking;
 		}
 	} else {
