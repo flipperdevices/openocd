@@ -646,6 +646,8 @@ AS_IF([test "x$enable_capstone" != xno], [
 		fi
 		enable_capstone=no
 	])
+], [
+	AC_DEFINE([HAVE_CAPSTONE], [0], [0 if you don't have Capstone disassembly framework.])
 ])
 
 AS_IF([test "x$enable_capstone" == xno], [
