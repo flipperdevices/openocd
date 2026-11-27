@@ -101,13 +101,18 @@ static const char *transport_full_name(unsigned int id)
 	return NULL;
 }
 
-static const char *transport_deprecated_name(unsigned int id)
+/**
+ * Modern name for a deprecated transport name ("hla_swd" -> "swd"),
+ * or the name itself when it is not deprecated.
+ */
+static const char *transport_undeprecated_name(const char *name)
 {
 	for (unsigned int i = 0; i < ARRAY_SIZE(transport_names); i++)
-		if (id == transport_names[i].id)
-			return transport_names[i].deprecated_name;
+		if (transport_names[i].deprecated_name
+			&& !strcmp(transport_names[i].deprecated_name, name))
+			return transport_names[i].name;
 
-	return NULL;
+	return name;
 }
 
 static bool is_transport_id_valid(unsigned int id)
@@ -342,17 +347,25 @@ COMMAND_HANDLER(handle_transport_select)
 		return ERROR_OK;
 	}
 
+	/*
+	 * A deprecated name selects the adapter's transport of the same kind, so
+	 * old scripts pairing 'transport select hla_swd' with an adapter that now
+	 * offers dapdirect or plain SWD keep working.
+	 */
+	const char *name = transport_undeprecated_name(CMD_ARGV[0]);
+	if (name != CMD_ARGV[0])
+		LOG_WARNING("DEPRECATED! use 'transport select %s', not 'transport select %s'",
+			name, CMD_ARGV[0]);
+
 	/* assign transport */
 	if (session) {
-		if (!strcmp(transport_name(session->id), CMD_ARGV[0])
-			|| (transport_deprecated_name(session->id)
-				&& !strcmp(transport_deprecated_name(session->id), CMD_ARGV[0]))) {
+		if (!strcmp(transport_name(session->id), name)) {
 			if (transport_single_is_autoselected) {
 				/* Nothing to do, but also nothing to complain */
 				transport_single_is_autoselected = false;
 				return ERROR_OK;
 			}
-			LOG_DEBUG("Transport \"%s\" was already selected", CMD_ARGV[0]);
+			LOG_DEBUG("Transport \"%s\" was already selected", name);
 			return ERROR_OK;
 		}
 		command_print(CMD, "Can't change session's transport after the initial selection was made");
@@ -374,15 +387,8 @@ COMMAND_HANDLER(handle_transport_select)
 		if (!(i & allowed_transports))
 			continue;
 
-		if (!strcmp(transport_name(i), CMD_ARGV[0]))
+		if (!strcmp(transport_name(i), name))
 			return transport_select(CMD_CTX, i);
-
-		if (transport_deprecated_name(i)
-			&& !strcmp(transport_deprecated_name(i), CMD_ARGV[0])) {
-			LOG_WARNING("DEPRECATED! use 'transport select %s', not 'transport select %s'",
-				transport_name(i), transport_deprecated_name(i));
-			return transport_select(CMD_CTX, i);
-		}
 	}
 
 	command_print(CMD, "Debug adapter doesn't support '%s' transport", CMD_ARGV[0]);
