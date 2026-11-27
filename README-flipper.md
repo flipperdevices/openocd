@@ -11,6 +11,8 @@ The `flipper` branch is mainline [OpenOCD](https://github.com/openocd-org/openoc
 | `guess-rev.sh` honours `OPENOCD_RELSTR` | Release builds name their own version suffix |
 | `contrib/flipper/`, `.github/workflows/flipper-*.yml` | Release builds |
 
+The full list against the mainline base, what was dropped from the old fork and the known issues: [FLIPPER-CHANGES.md](FLIPPER-CHANGES.md).
+
 Everything else comes from mainline, including RP2350 (`target/rp2350.cfg`, the `rp2xxx` flash driver), STM32U5 device IDs and CMSIS-DAP over TCP.
 
 ## Compatibility notes

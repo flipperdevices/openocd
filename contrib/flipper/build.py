@@ -274,6 +274,7 @@ class Build:
             if path.is_file() and not SKIP_SCRIPTS.search(rel):
                 files[f'{root}/{rel}'] = path
         files[f'{root}/README-flipper.md'] = SRC / 'README-flipper.md'
+        files[f'{root}/FLIPPER-CHANGES.md'] = SRC / 'FLIPPER-CHANGES.md'
         files[f'{root}/licenses/openocd/COPYING'] = SRC / 'COPYING'
         for path in sorted((SRC / 'LICENSES').rglob('*')):
             if path.is_file():
