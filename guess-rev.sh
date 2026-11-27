@@ -14,6 +14,12 @@ usage() {
 
 cd "${1:-.}" || usage
 
+# A release build names its own version suffix, e.g. "-flipper-v1"
+if [ -n "${OPENOCD_RELSTR+x}" ]; then
+	printf '%s' "$OPENOCD_RELSTR"
+	exit
+fi
+
 # Check for git and a git repo.
 if head=`git rev-parse --verify --short HEAD 2>/dev/null`; then
 
