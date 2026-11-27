@@ -1,0 +1,43 @@
+{
+    "libusb": {
+        "version": "1.0.30",
+        "url": "https://github.com/libusb/libusb/releases/download/v1.0.30/libusb-1.0.30.tar.bz2",
+        "sha256": "fea36f34f9156400209595e300840767ab1a385ede1dc7ee893015aea9c6dbaf",
+        "license": "LGPL-2.1-or-later",
+        "license_files": ["COPYING"]
+    },
+    "hidapi": {
+        "version": "0.15.0",
+        "url": "https://github.com/libusb/hidapi/archive/refs/tags/hidapi-0.15.0.tar.gz",
+        "sha256": "5d84dec684c27b97b921d2f3b73218cb773cf4ea915caee317ac8fc73cef8136",
+        "license": "BSD-3-Clause",
+        "license_files": ["LICENSE.txt", "LICENSE-bsd.txt"]
+    },
+    "libftdi1": {
+        "version": "1.5",
+        "url": "https://www.intra2net.com/en/developer/libftdi/download/libftdi1-1.5.tar.bz2",
+        "sha256": "7c7091e9c86196148bd41177b4590dccb1510bfe6cea5bf7407ff194482eb049",
+        "license": "LGPL-2.1-only",
+        "license_files": ["COPYING.LIB"]
+    },
+    "jimtcl": {
+        "version": "0.84",
+        "url": "https://github.com/msteveb/jimtcl/archive/refs/tags/0.84.tar.gz",
+        "sha256": "435095b436b38b96dd85e8cda13878144813bf52066057f76368db178dd8fea2",
+        "license": "BSD-2-Clause-Views",
+        "license_files": ["LICENSE"]
+    },
+    "libjaylink": {
+        "version": "0.5.0",
+        "url": "https://gitlab.zapb.de/libjaylink/libjaylink/-/archive/0.5.0/libjaylink-0.5.0.tar.gz",
+        "sha256": "235b12d161b29d813026704f335536a6a916646ea2058302e4ca45ca2cd81325",
+        "license": "GPL-2.0-or-later",
+        "license_files": ["COPYING"]
+    },
+    "llvm-mingw": {
+        "version": "20261104",
+        "url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20261104/llvm-mingw-20261104-ucrt-ubuntu-22.04-x86_64.tar.xz",
+        "sha256": "919380403de87dca3c581c2053230cd298af5e891286628ba0613b7fed370926",
+        "tool": true
+    }
+}

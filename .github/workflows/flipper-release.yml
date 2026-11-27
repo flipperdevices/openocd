@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+name: Flipper release
+
+# Push a tag flipper-v<N> on a commit of the flipper branch. Everything is rebuilt and
+# tested from the tag; the release gets the five archives, SHA256SUMS, release.json and
+# the sources (this tree and the pinned dependencies).
+
+on:
+  push:
+    tags: ['flipper-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flipper-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tag is flipper-v<N> on the flipper branch, base.txt is an ancestor
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^flipper-v[1-9][0-9]*$ ]]; then
+            echo "::error::release tags are flipper-v<N>, N a positive integer; got $GITHUB_REF_NAME"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/flipper; then
+            echo "::error::$GITHUB_REF_NAME does not point at a commit on flipper"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$(cat contrib/flipper/base.txt)" "$GITHUB_SHA"; then
+            echo "::error::contrib/flipper/base.txt is not an ancestor of the tag; update it after a rebase"
+            exit 1
+          fi
+
+  build:
+    needs: check
+    uses: ./.github/workflows/flipper-build.yml
+    with:
+      tag: ${{ github.ref_name }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: openocd-*
+          path: release
+          merge-multiple: true
+
+      - name: Sources
+        run: |
+          rm -f release/*.sha256
+          git archive --format=tar.gz --prefix="openocd-$TAG/" -o "release/openocd-$TAG-src.tar.gz" HEAD
+          python3 contrib/flipper/build.py --fetch-only --cache deps
+          tar -czf "release/openocd-$TAG-deps-src.tar.gz" -C deps .
+
+      - name: SHA256SUMS and release.json
+        run: |
+          python3 contrib/flipper/release.py release --tag "$TAG" --commit "$GITHUB_SHA" \
+            --base "$(cat contrib/flipper/base.txt)"
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: release/SHA256SUMS
+
+      - name: Release
+        run: |
+          {
+            echo "OpenOCD $TAG: mainline \`$(cut -c1-12 contrib/flipper/base.txt)\` plus the Flipper patches."
+            echo
+            echo "\`openocd --version\` reports \`0.12.0+dev-$TAG\`. See README-flipper.md."
+            echo
+            echo '```'
+            cat release/SHA256SUMS
+            echo '```'
+          } > notes.md
+          gh release create "$TAG" --verify-tag --title "OpenOCD $TAG" --notes-file notes.md release/*

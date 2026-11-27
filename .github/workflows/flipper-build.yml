@@ -1,0 +1,142 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+name: Flipper build
+
+# Self-contained OpenOCD archives for five platforms, each tested on its own OS.
+# flipper-release.yml calls this with a tag; pushes and pull requests build snapshots.
+
+on:
+  push:
+    branches: [flipper]
+  pull_request:
+    branches: [flipper]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag, flipper-v<N>
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flipper-build-${{ github.ref }}-${{ inputs.tag || 'snapshot' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # A release reports its tag; a snapshot reports the commit
+  RELSTR: ${{ inputs.tag && format('-{0}', inputs.tag) || '' }}
+  NAME_TAG: ${{ inputs.tag || 'flipper-snapshot' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-24.04
+            container: quay.io/pypa/manylinux_2_28_x86_64:2026.11.07-1@sha256:9555ba6c479fa69a2aa80ad1dc57154a60d562b19df159361d9379a02beb1e36
+          - platform: linux-aarch64
+            runner: ubuntu-24.04-arm
+            container: quay.io/pypa/manylinux_2_28_aarch64:2026.11.07-1@sha256:cb37f0d66c8a75abb93cf6085cad1f1427cd7208f0c0fc48359bb1eea9924f21
+          - platform: darwin-arm64
+            runner: macos-15
+          - platform: windows-x64
+            runner: ubuntu-24.04
+          - platform: windows-arm64
+            runner: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || '' }}
+          persist-credentials: false
+
+      - name: Build tools (Linux container)
+        if: startsWith(matrix.platform, 'linux')
+        run: |
+          dnf install -y -q systemd-devel
+          echo "PYTHON=/opt/python/cp312-cp312/bin/python3" >> "$GITHUB_ENV"
+
+      - name: Build tools (macOS)
+        if: matrix.platform == 'darwin-arm64'
+        run: |
+          brew install -q autoconf automake libtool pkgconf
+          echo "PYTHON=python3" >> "$GITHUB_ENV"
+
+      - name: Build tools (Windows cross-build)
+        if: startsWith(matrix.platform, 'windows')
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends autoconf automake libtool pkg-config cmake
+          echo "PYTHON=python3" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          relstr=()
+          [ -n "$RELSTR" ] && relstr=("--relstr=$RELSTR")
+          "$PYTHON" contrib/flipper/build.py --platform ${{ matrix.platform }} --out dist \
+            --name "openocd-$NAME_TAG-${{ matrix.platform }}" "${relstr[@]}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: openocd-${{ matrix.platform }}
+          path: dist/
+          compression-level: 0
+          if-no-files-found: error
+
+  test:
+    name: test (${{ matrix.platform }}${{ matrix.container && ', ubuntu 22.04' || '' }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {platform: linux-x86_64, runner: ubuntu-24.04}
+          - {platform: linux-x86_64, runner: ubuntu-24.04, container: 'ubuntu:22.04'}
+          - {platform: linux-aarch64, runner: ubuntu-24.04-arm}
+          - {platform: linux-aarch64, runner: ubuntu-24.04-arm, container: 'ubuntu:22.04'}
+          - {platform: darwin-arm64, runner: macos-15}
+          - {platform: windows-x64, runner: windows-2022}
+          - {platform: windows-arm64, runner: windows-11-arm}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || '' }}
+          persist-credentials: false
+          sparse-checkout: contrib/flipper
+
+      - name: Python (bare Ubuntu 22.04, no USB libraries)
+        if: matrix.container
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends python3 libudev1
+          if dpkg -l | grep -E 'libusb-1.0|libftdi|libhidapi'; then
+            echo "::error::USB libraries are installed; the test would not prove the archive is self-contained"
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: openocd-${{ matrix.platform }}
+          path: dist
+
+      - name: Smoke test
+        run: |
+          python=$(command -v python3 || command -v python)
+          archive=$(ls dist/*.tar.gz dist/*.zip 2>/dev/null)
+          "$python" contrib/flipper/smoke.py "$archive" \
+            ${{ inputs.tag && format('--version 0.12.0+dev-{0}', inputs.tag) || '' }}
