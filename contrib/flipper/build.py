@@ -216,10 +216,11 @@ class Build:
             # uses, and hidapi's lists none
             env['LIBS'] = '-framework IOKit -framework CoreFoundation -framework Security'
         if relstr is None:
-            # A snapshot: '-flipper' plus what git describes, e.g. '-flipper-gf17a7c9'
-            rev = subprocess.run(['sh', SRC / 'guess-rev.sh', SRC], capture_output=True, text=True,
-                                 env={k: v for k, v in env.items() if k != 'OPENOCD_RELSTR'}).stdout.strip()
-            relstr = f'-flipper{rev}'
+            # A snapshot: '-flipper-g<commit>'. safe.directory: in a CI container
+            # the checkout belongs to another user, and git refuses it otherwise
+            rev = subprocess.run(['git', '-c', 'safe.directory=*', 'rev-parse', '--short=9', 'HEAD'],
+                                 cwd=SRC, capture_output=True, text=True).stdout.strip()
+            relstr = f'-flipper-g{rev}' if rev else '-flipper-snapshot'
         env['OPENOCD_RELSTR'] = relstr
         run([SRC / 'configure', *self.host_args(), *dirs, *adapters, '--disable-werror',
              '--disable-internal-jimtcl', '--disable-internal-libjaylink', '--without-capstone',
