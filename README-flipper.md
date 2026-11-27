@@ -28,7 +28,7 @@ Tag `flipper-v<N>` on the `flipper` branch. The release workflow builds and test
 
 Each archive holds `openocd/openocd[.exe]` with `scripts/` next to it, `contrib/60-openocd.rules` and `licenses/`. USB libraries are linked statically; Linux needs glibc 2.28 or newer and `libudev1`.
 
-`openocd --version` reports `0.12.0+dev-flipper-v<N>`.
+`openocd --version` reports `0.12.0+dev-flipper-v<N>`; snapshot builds report `0.12.0+dev-flipper-g<commit>`.
 
 ## Building
 

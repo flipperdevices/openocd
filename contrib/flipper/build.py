@@ -215,8 +215,12 @@ class Build:
             # libtool drops the '-Wl,-framework,X' form libusb's pkg-config file
             # uses, and hidapi's lists none
             env['LIBS'] = '-framework IOKit -framework CoreFoundation -framework Security'
-        if relstr is not None:
-            env['OPENOCD_RELSTR'] = relstr
+        if relstr is None:
+            # A snapshot: '-flipper' plus what git describes, e.g. '-flipper-gf17a7c9'
+            rev = subprocess.run(['sh', SRC / 'guess-rev.sh', SRC], capture_output=True, text=True,
+                                 env={k: v for k, v in env.items() if k != 'OPENOCD_RELSTR'}).stdout.strip()
+            relstr = f'-flipper{rev}'
+        env['OPENOCD_RELSTR'] = relstr
         run([SRC / 'configure', *self.host_args(), *dirs, *adapters, '--disable-werror',
              '--disable-internal-jimtcl', '--disable-internal-libjaylink', '--without-capstone',
              '--disable-doxygen-html', 'MAKEINFO=true'], cwd=build, env=env)
@@ -313,7 +317,7 @@ def main():
     parser.add_argument('--out', type=Path, default=Path('dist'))
     parser.add_argument('--work', type=Path, default=Path('build-flipper'))
     parser.add_argument('--cache', type=Path, default=Path('build-flipper/cache'))
-    parser.add_argument('--relstr', help='version suffix, e.g. -flipper-v1 (default: from git)')
+    parser.add_argument('--relstr', help='version suffix, e.g. -flipper-v1 (default: -flipper plus the git revision)')
     parser.add_argument('--name', help='archive name without extension, e.g. openocd-flipper-v1-<platform> (default: openocd-flipper-<platform>)')
     args = parser.parse_args()
 
