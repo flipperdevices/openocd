@@ -137,6 +137,7 @@ jobs:
       - name: Smoke test
         run: |
           python=$(command -v python3 || command -v python)
-          archive=$(ls dist/*.tar.gz dist/*.zip 2>/dev/null)
-          "$python" contrib/flipper/smoke.py "$archive" \
+          shopt -s nullglob
+          archives=(dist/*.tar.gz dist/*.zip)
+          "$python" contrib/flipper/smoke.py "${archives[0]}" \
             ${{ inputs.tag && format('--version 0.12.0+dev-{0}', inputs.tag) || '' }}
